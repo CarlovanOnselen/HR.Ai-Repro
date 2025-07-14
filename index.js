@@ -13,33 +13,31 @@ const adapter = new BotFrameworkAdapter({
 // Create server
 const server = restify.createServer();
 
-// Enable CORS
+// Setup CORS middleware
 const cors = corsMiddleware({
   origins: ['https://www.labourcheck.com'],
   allowHeaders: ['Authorization', 'Content-Type'],
   exposeHeaders: ['Authorization']
 });
-
 server.pre(cors.preflight);
 server.use(cors.actual);
 
-// Enable JSON body parsing
+// Enable request body parsing
 server.use(restify.plugins.bodyParser());
 
 // Start server
-const port = process.env.PORT || 3978;
-server.listen(port, () => {
-  console.log(`✅ HR.Ai Bot running on port ${port}`);
+server.listen(process.env.PORT || 3978, () => {
+  console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
 });
 
-// Health check
+// Health check endpoint
 server.get('/', (req, res, next) => {
   res.send(200, '✅ HR.Ai is running.');
   return next();
 });
 
-// Bot endpoint
-server.post('/api/messages', (req, res, next) => {
+// Bot messages endpoint
+server.post('/api/messages', (req, res) => {
   console.log('[Incoming Request Body]', req.body);
 
   adapter.processActivity(req, res, async (context) => {
@@ -73,5 +71,5 @@ server.post('/api/messages', (req, res, next) => {
     }
   });
 
-  return next();
+  // Do NOT call res.send() or return next() here — handled by adapter internally
 });
