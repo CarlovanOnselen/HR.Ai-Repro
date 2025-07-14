@@ -1,54 +1,114 @@
-const restify = require('restify');
-const corsMiddleware = require('restify-cors-middleware2');
-const { OpenAI } = require('openai');
+import restify from 'restify';
+import cors from '@koa/cors';
+import { OpenAI } from 'openai';
+import fileType from 'file-type';
 
-// Initialize OpenAI
+// Load environment variables
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ASSISTANT_ID = process.env.ASSISTANT_ID;
+
+if (!OPENAI_API_KEY || !ASSISTANT_ID) {
+  console.error('ERROR: OPENAI_API_KEY and ASSISTANT_ID environment variables must be set');
+  process.exit(1);
+}
+
+// Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: OPENAI_API_KEY,
 });
 
-// Create Restify server
 const server = restify.createServer();
 
-// Enable CORS
-const cors = corsMiddleware({
-  origins: ['*'], // Replace '*' with ['https://www.labourcheck.com'] for more security
-  allowHeaders: ['Authorization'],
-  exposeHeaders: ['Authorization']
+// Enable CORS middleware for all origins
+server.pre((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.send(200);
+    return;
+  }
+  return next();
 });
 
-server.pre(cors.preflight);
-server.use(cors.actual);
-server.use(restify.plugins.bodyParser());
+// Body parser to parse JSON and multipart/form-data (for files)
+server.use(restify.plugins.bodyParser({
+  mapParams: true,
+  mapFiles: true,
+  overrideParams: false,
+  multipartHandler: async (part, req, res, next) => {
+    if (part.filename) {
+      // You can handle file uploads here (save to disk or memory)
+      // For demo: store buffer in req.files with mimetype
+      const buffers = [];
+      for await (const chunk of part) {
+        buffers.push(chunk);
+      }
+      const fileBuffer = Buffer.concat(buffers);
+      const type = await fileType.fromBuffer(fileBuffer);
+      req.files = req.files || {};
+      req.files[part.name] = {
+        filename: part.filename,
+        data: fileBuffer,
+        mime: type?.mime || 'application/octet-stream'
+      };
+    }
+    next();
+  }
+}));
 
-// API endpoint
+// POST /api/messages endpoint
 server.post('/api/messages', async (req, res) => {
   try {
-    const userMessage = req.body.message;
+    const { message, memory, files } = req.body;
 
-    if (!userMessage) {
-      res.send(400, { reply: "⚠️ No message provided." });
+    if (!message) {
+      res.send(400, { error: 'No message provided' });
       return;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are HR.Ai, a helpful HR assistant." },
-        { role: "user", content: userMessage },
-      ],
+    // Prepare messages array for the Assistants API
+    // memory is an optional array of previous messages
+    const messages = [];
+
+    // Push system prompt first
+    messages.push({
+      role: 'system',
+      content: 'You are HR.Ai, a helpful HR assistant.',
     });
 
-    const botReply = completion.choices[0].message.content;
+    // Add memory if provided (expect array of {role, content})
+    if (Array.isArray(memory)) {
+      for (const mem of memory) {
+        if (mem.role && mem.content) {
+          messages.push(mem);
+        }
+      }
+    }
+
+    // Add the current user message last
+    messages.push({
+      role: 'user',
+      content: message,
+    });
+
+    // Call the OpenAI Assistants API with thread memory support
+    const completion = await openai.chat.completions.create({
+      assistantId: ASSISTANT_ID,
+      messages,
+      files, // optional files support, you can expand this if needed
+    });
+
+    const botReply = completion.choices[0]?.message?.content || 'No reply from assistant.';
+
     res.send({ reply: botReply });
-  } catch (err) {
-    console.error('❌ Error:', err);
-    res.send(500, { reply: "❌ Internal server error." });
+  } catch (error) {
+    console.error('Error in /api/messages:', error);
+    res.send(500, { error: 'Internal server error.' });
   }
 });
 
-// Start server
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
-  console.log(`✅ HR.Ai server is running on port ${PORT}`);
+  console.log(`✅ HR.Ai server running on port ${PORT}`);
 });
