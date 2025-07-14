@@ -15,7 +15,7 @@ const server = restify.createServer();
 
 // Setup CORS middleware
 const cors = corsMiddleware({
-  origins: ['https://www.labourcheck.com'], // Your website domain here
+  origins: ['https://www.labourcheck.com'], // your frontend domain here
   allowHeaders: ['Authorization', 'Content-Type'],
   exposeHeaders: ['Authorization']
 });
@@ -23,10 +23,8 @@ const cors = corsMiddleware({
 server.pre(cors.preflight);
 server.use(cors.actual);
 
-// Start server
-server.listen(process.env.PORT || 3978, () => {
-  console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
-});
+// Needed to parse JSON body
+server.use(restify.plugins.bodyParser());
 
 // Health check endpoint
 server.get('/', (req, res, next) => {
@@ -34,7 +32,7 @@ server.get('/', (req, res, next) => {
   return next();
 });
 
-// Bot messages endpoint
+// Bot messages endpoint - matches what your frontend should call
 server.post('/api/messages', (req, res, next) => {
   adapter.processActivity(req, res, async (context) => {
     if (context.activity.type === 'message') {
@@ -53,14 +51,20 @@ server.post('/api/messages', (req, res, next) => {
         });
 
         const data = await response.json();
-        const reply = data?.choices?.[0]?.message?.content || "🤖 I'm here, but didn’t quite get that.";
+        const reply = data?.choices?.[0]?.message?.content || "🤖 Sorry, I didn't get that.";
 
         await context.sendActivity(reply);
       } catch (err) {
         console.error("❌ OpenAI API error:", err);
-        await context.sendActivity("⚠️ There was an error connecting to HR.Ai.");
+        await context.sendActivity("⚠️ Error connecting to HR.Ai.");
       }
     }
   });
   return next();
+});
+
+// Start server
+const PORT = process.env.PORT || 3978;
+server.listen(PORT, () => {
+  console.log(`✅ HR.Ai Bot running on port ${PORT}`);
 });
