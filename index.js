@@ -1,113 +1,85 @@
 import restify from 'restify';
-import cors from '@koa/cors';
 import { OpenAI } from 'openai';
-import fileType from 'file-type';
+import { lookup } from 'file-type';
+import fs from 'fs/promises';
+import path from 'path';
 
-// Load environment variables
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const ASSISTANT_ID = process.env.ASSISTANT_ID;
-
-if (!OPENAI_API_KEY || !ASSISTANT_ID) {
-  console.error('ERROR: OPENAI_API_KEY and ASSISTANT_ID environment variables must be set');
-  process.exit(1);
-}
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY,
-});
+// Initialize OpenAI
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const server = restify.createServer();
+server.use(restify.plugins.bodyParser());
 
-// Enable CORS middleware for all origins
-server.pre((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+// Manual CORS middleware
+server.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); // allow all origins
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   if (req.method === 'OPTIONS') {
     res.send(200);
-    return;
-  }
-  return next();
-});
-
-// Body parser to parse JSON and multipart/form-data (for files)
-server.use(restify.plugins.bodyParser({
-  mapParams: true,
-  mapFiles: true,
-  overrideParams: false,
-  multipartHandler: async (part, req, res, next) => {
-    if (part.filename) {
-      // You can handle file uploads here (save to disk or memory)
-      // For demo: store buffer in req.files with mimetype
-      const buffers = [];
-      for await (const chunk of part) {
-        buffers.push(chunk);
-      }
-      const fileBuffer = Buffer.concat(buffers);
-      const type = await fileType.fromBuffer(fileBuffer);
-      req.files = req.files || {};
-      req.files[part.name] = {
-        filename: part.filename,
-        data: fileBuffer,
-        mime: type?.mime || 'application/octet-stream'
-      };
-    }
+  } else {
     next();
   }
-}));
+});
 
-// POST /api/messages endpoint
+// POST /api/messages
 server.post('/api/messages', async (req, res) => {
   try {
-    const { message, memory, files } = req.body;
+    const { message, memory = [], fileData } = req.body;
 
     if (!message) {
-      res.send(400, { error: 'No message provided' });
+      res.send(400, { error: 'Message is required.' });
       return;
     }
 
-    // Prepare messages array for the Assistants API
-    // memory is an optional array of previous messages
-    const messages = [];
+    const thread = await openai.beta.threads.create();
 
-    // Push system prompt first
-    messages.push({
-      role: 'system',
-      content: 'You are HR.Ai, a helpful HR assistant.',
+    // Add user's message
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: message
     });
 
-    // Add memory if provided (expect array of {role, content})
-    if (Array.isArray(memory)) {
-      for (const mem of memory) {
-        if (mem.role && mem.content) {
-          messages.push(mem);
-        }
-      }
+    // Attach file if any
+    if (fileData && fileData.name && fileData.content) {
+      const buffer = Buffer.from(fileData.content, 'base64');
+      const tmpFile = path.join('/tmp', fileData.name);
+      await fs.writeFile(tmpFile, buffer);
+
+      const fileUpload = await openai.files.create({
+        file: await fs.readFile(tmpFile),
+        purpose: 'assistants'
+      });
+
+      await openai.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content: 'Uploading a file for reference.',
+        file_ids: [fileUpload.id]
+      });
     }
 
-    // Add the current user message last
-    messages.push({
-      role: 'user',
-      content: message,
+    // Run the assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: 'asst_CvpjeE9OxLq5bqHLFbSmanBP'
     });
 
-    // Call the OpenAI Assistants API with thread memory support
-    const completion = await openai.chat.completions.create({
-      assistantId: ASSISTANT_ID,
-      messages,
-      files, // optional files support, you can expand this if needed
-    });
+    // Wait for completion
+    let completedRun;
+    do {
+      await new Promise((r) => setTimeout(r, 1500));
+      completedRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    } while (completedRun.status !== 'completed');
 
-    const botReply = completion.choices[0]?.message?.content || 'No reply from assistant.';
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const reply = messages.data.find(m => m.role === 'assistant');
 
-    res.send({ reply: botReply });
-  } catch (error) {
-    console.error('Error in /api/messages:', error);
+    res.send({ reply: reply?.content[0]?.text?.value || 'No reply.' });
+  } catch (err) {
+    console.error('❌ Error:', err);
     res.send(500, { error: 'Internal server error.' });
   }
 });
 
+// Start server
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`✅ HR.Ai server running on port ${PORT}`);

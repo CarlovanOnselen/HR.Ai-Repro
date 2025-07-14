@@ -1,16 +1,15 @@
 {
   "name": "hr-ai-teams-bot",
   "version": "1.0.0",
-  "description": "HR.Ai assistant backend with OpenAI Assistants API",
+  "description": "HR.Ai assistant backend using Assistants API",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "file-type": "^18.4.0",
-    "openai": "^4.25.1",
     "restify": "^11.1.0",
-    "restify-cors-middleware2": "^1.1.2"
+    "openai": "^4.25.1",
+    "file-type": "^18.4.0"
   }
 }
