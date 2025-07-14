@@ -13,6 +13,17 @@ server.listen(process.env.PORT || 3978, () => {
     console.log(`HR.Ai Bot running on port ${process.env.PORT || 3978}`);
 });
 
+// ✅ Root endpoint
+server.get('/', (req, res) => {
+    res.send(200, '✅ HR.Ai Bot is up and running!');
+});
+
+// ✅ Health check
+server.get('/healthz', (req, res) => {
+    res.send(200, 'OK');
+});
+
+// ✅ Chat endpoint for MS Teams
 server.post('/api/messages', (req, res) => {
     adapter.processActivity(req, res, async (context) => {
         if (context.activity.type === 'message') {
