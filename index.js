@@ -13,7 +13,7 @@ const adapter = new BotFrameworkAdapter({
 // Create server
 const server = restify.createServer();
 
-// Setup CORS middleware
+// Enable CORS
 const cors = corsMiddleware({
   origins: ['https://www.labourcheck.com'],
   allowHeaders: ['Authorization', 'Content-Type'],
@@ -23,9 +23,13 @@ const cors = corsMiddleware({
 server.pre(cors.preflight);
 server.use(cors.actual);
 
+// Enable JSON body parsing
+server.use(restify.plugins.bodyParser());
+
 // Start server
-server.listen(process.env.PORT || 3978, () => {
-  console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
+const port = process.env.PORT || 3978;
+server.listen(port, () => {
+  console.log(`✅ HR.Ai Bot running on port ${port}`);
 });
 
 // Health check
@@ -34,36 +38,40 @@ server.get('/', (req, res, next) => {
   return next();
 });
 
-// Bot messages endpoint
+// Bot endpoint
 server.post('/api/messages', (req, res, next) => {
+  console.log('[Incoming Request Body]', req.body);
+
   adapter.processActivity(req, res, async (context) => {
     if (context.activity.type === 'message') {
       const userMessage = context.activity.text;
+      console.log('[User Message]', userMessage);
 
       try {
-        const response = await fetch(`https://api.openai.com/v1/assistants/${process.env.ASSISTANT_ID}/messages`, {
-          method: "POST",
+        const openaiRes = await fetch(`https://api.openai.com/v1/assistants/${process.env.ASSISTANT_ID}/messages`, {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
           },
           body: JSON.stringify({
-            thread: { messages: [{ role: "user", content: userMessage }] }
+            thread: {
+              messages: [{ role: 'user', content: userMessage }]
+            }
           })
         });
 
-        const data = await response.json();
-        const reply = data?.choices?.[0]?.message?.content || "🤖 I'm here, but didn’t quite get that.";
+        const data = await openaiRes.json();
+        console.log('[OpenAI Response]', data);
 
-        // Send to frontend
+        const reply = data?.choices?.[0]?.message?.content || "🤖 I didn't quite get that, can you rephrase?";
         await context.sendActivity(reply);
-        res.send(200, { reply }); // <-- JSON response for frontend
       } catch (err) {
-        console.error("❌ OpenAI API error:", err);
-        await context.sendActivity("⚠️ There was an error connecting to HR.Ai.");
-        res.send(500, { reply: "⚠️ There was an error connecting to HR.Ai." });
+        console.error('❌ Error connecting to OpenAI:', err);
+        await context.sendActivity('⚠️ Sorry, something went wrong while processing your request.');
       }
     }
   });
+
   return next();
 });
