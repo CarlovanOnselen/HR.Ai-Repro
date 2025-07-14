@@ -1,99 +1,105 @@
 import restify from 'restify';
-import corsMiddleware from 'restify-cors-middleware';
+import corsMiddleware from 'restify-cors-middleware2';
 import { OpenAI } from 'openai';
 import fileType from 'file-type';
 import fs from 'fs';
 import path from 'path';
 
-// Init OpenAI with your API Key
+// === OpenAI Setup ===
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Init server
+const assistantId = 'asst_CvpjeE9OxLq5bqHLFbSmanBP'; // Replace with yours
 const server = restify.createServer();
-server.use(restify.plugins.bodyParser({ mapParams: true }));
 
-// Allow CORS
+// === CORS Middleware ===
 const cors = corsMiddleware({
   origins: ['*'],
   allowHeaders: ['Authorization'],
-  exposeHeaders: ['Authorization'],
+  exposeHeaders: ['Authorization']
 });
 server.pre(cors.preflight);
 server.use(cors.actual);
 
-// TEMP: store uploaded files
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+// === Body Parser Middleware ===
+server.use(restify.plugins.bodyParser({ mapParams: true }));
 
-// Endpoint: POST /api/messages
+// === /api/messages ===
 server.post('/api/messages', async (req, res) => {
   try {
-    const { message, threadId, fileBase64, fileName } = req.body;
+    const { message, memory = [], fileUrl } = req.body;
 
     if (!message) {
-      return res.send(400, { error: 'Message is required' });
+      res.send(400, { error: 'No message provided.' });
+      return;
     }
 
-    // 🧠 If no thread, create one
-    const thread_id = threadId || (await openai.beta.threads.create()).id;
+    // === Step 1: Create thread (or restore from memory) ===
+    const thread = await openai.beta.threads.create();
 
-    let file_id;
-    if (fileBase64 && fileName) {
-      // Decode base64 string to buffer
-      const buffer = Buffer.from(fileBase64, 'base64');
-      const detected = await fileType.fromBuffer(buffer);
-      const ext = path.extname(fileName) || `.${detected?.ext || 'bin'}`;
-      const tempPath = path.join(UPLOAD_DIR, `temp-${Date.now()}${ext}`);
-      fs.writeFileSync(tempPath, buffer);
-
-      // Upload to OpenAI
-      const uploaded = await openai.files.create({
-        file: fs.createReadStream(tempPath),
+    // === Step 2: Upload file if present ===
+    let fileId = null;
+    if (fileUrl) {
+      const localFilePath = await downloadFile(fileUrl);
+      const upload = await openai.files.create({
+        file: fs.createReadStream(localFilePath),
         purpose: 'assistants',
       });
-
-      file_id = uploaded.id;
-      fs.unlinkSync(tempPath);
+      fileId = upload.id;
+      fs.unlinkSync(localFilePath); // Cleanup temp
     }
 
-    // Append message to thread
-    await openai.beta.threads.messages.create(thread_id, {
+    // === Step 3: Add user message to thread ===
+    await openai.beta.threads.messages.create(thread.id, {
       role: 'user',
       content: message,
-      ...(file_id && { file_ids: [file_id] }),
+      ...(fileId && { file_ids: [fileId] }),
     });
 
-    // Run assistant on the thread
-    const run = await openai.beta.threads.runs.create(thread_id, {
-      assistant_id: 'asst_CvpjeE9OxLq5bqHLFbSmanBP',
+    // === Step 4: Run assistant ===
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: assistantId,
     });
 
-    // Poll until complete
-    let completedRun;
-    const maxTries = 20;
-    for (let i = 0; i < maxTries; i++) {
-      completedRun = await openai.beta.threads.runs.retrieve(thread_id, run.id);
-      if (completedRun.status === 'completed') break;
-      if (completedRun.status === 'failed' || completedRun.status === 'expired') {
-        throw new Error('Assistant failed to respond.');
+    // === Step 5: Poll run status ===
+    let result;
+    while (true) {
+      const status = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      if (status.status === 'completed') break;
+      if (status.status === 'failed') {
+        return res.send(500, { error: 'Run failed.' });
       }
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    // Get latest assistant message
-    const messages = await openai.beta.threads.messages.list(thread_id);
-    const reply = messages.data.find((m) => m.role === 'assistant')?.content?.[0]?.text?.value || '...';
+    // === Step 6: Get assistant reply ===
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const assistantReply = messages.data.find(msg => msg.role === 'assistant');
 
-    return res.send({ reply, threadId: thread_id });
+    res.send({
+      reply: assistantReply?.content[0]?.text?.value || 'No response.',
+      thread_id: thread.id,
+    });
   } catch (err) {
-    console.error('❌ Error:', err);
-    return res.send(500, { error: 'Internal server error.' });
+    console.error('Error:', err);
+    res.send(500, { error: 'Internal server error.' });
   }
 });
 
+// === Server Listen ===
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`✅ HR.Ai server running on port ${PORT}`);
 });
+
+// === Utility: Download file ===
+async function downloadFile(fileUrl) {
+  const response = await fetch(fileUrl);
+  const buffer = await response.arrayBuffer();
+  const ext = (await fileType.fromBuffer(Buffer.from(buffer)))?.ext || 'bin';
+  const filename = `upload-${Date.now()}.${ext}`;
+  const filePath = path.join('/tmp', filename);
+  fs.writeFileSync(filePath, Buffer.from(buffer));
+  return filePath;
+}
