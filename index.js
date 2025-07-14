@@ -30,23 +30,21 @@ server.listen(process.env.PORT || 3978, () => {
   console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
 });
 
-// Health check endpoint
+// Health check
 server.get('/', (req, res, next) => {
   res.send(200, '✅ HR.Ai is running.');
   return next();
 });
 
-// Bot messages endpoint
-server.post('/api/messages', (req, res) => {
-  console.log('[Incoming Request Body]', req.body);
-
+// 🔧 CORRECTED: Use full (req, res, next) signature for Restify compatibility
+server.post('/api/messages', (req, res, next) => {
   adapter.processActivity(req, res, async (context) => {
     if (context.activity.type === 'message') {
       const userMessage = context.activity.text;
       console.log('[User Message]', userMessage);
 
       try {
-        const openaiRes = await fetch(`https://api.openai.com/v1/assistants/${process.env.ASSISTANT_ID}/messages`, {
+        const response = await fetch(`https://api.openai.com/v1/assistants/${process.env.ASSISTANT_ID}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -59,17 +57,18 @@ server.post('/api/messages', (req, res) => {
           })
         });
 
-        const data = await openaiRes.json();
+        const data = await response.json();
         console.log('[OpenAI Response]', data);
 
-        const reply = data?.choices?.[0]?.message?.content || "🤖 I didn't quite get that, can you rephrase?";
+        const reply = data?.choices?.[0]?.message?.content || "🤖 I didn’t quite catch that. Can you rephrase?";
         await context.sendActivity(reply);
       } catch (err) {
-        console.error('❌ Error connecting to OpenAI:', err);
-        await context.sendActivity('⚠️ Sorry, something went wrong while processing your request.');
+        console.error('❌ Error from OpenAI:', err);
+        await context.sendActivity("⚠️ I'm having trouble right now. Please try again later.");
       }
     }
   });
 
-  // Do NOT call res.send() or return next() here — handled by adapter internally
+  // ✅ Important: return next() here for Restify chain
+  return next();
 });
