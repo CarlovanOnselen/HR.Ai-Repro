@@ -1,37 +1,36 @@
 const restify = require('restify');
-const corsMiddleware = require('restify-cors-middleware');  // add this
+const corsMiddleware = require('restify-cors-middleware2');
 const { OpenAI } = require('openai');
 
-// Initialize OpenAI client with your API key from environment variable
+// Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Configure CORS middleware
-const cors = corsMiddleware({
-  origins: ['https://www.labourcheck.com'],  // your frontend domain here
-  allowHeaders: ['Authorization', 'Content-Type'],
-  exposeHeaders: ['Authorization'],
-});
-
+// Create Restify server
 const server = restify.createServer();
 
-// Apply CORS middleware BEFORE other plugins
+// Enable CORS
+const cors = corsMiddleware({
+  origins: ['*'], // Replace '*' with ['https://www.labourcheck.com'] for more security
+  allowHeaders: ['Authorization'],
+  exposeHeaders: ['Authorization']
+});
+
 server.pre(cors.preflight);
 server.use(cors.actual);
-
-// Middleware to parse JSON body
 server.use(restify.plugins.bodyParser());
 
+// API endpoint
 server.post('/api/messages', async (req, res) => {
   try {
     const userMessage = req.body.message;
+
     if (!userMessage) {
       res.send(400, { reply: "⚠️ No message provided." });
       return;
     }
 
-    // Call OpenAI Chat Completion
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -41,14 +40,14 @@ server.post('/api/messages', async (req, res) => {
     });
 
     const botReply = completion.choices[0].message.content;
-
     res.send({ reply: botReply });
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error('❌ Error:', err);
     res.send(500, { reply: "❌ Internal server error." });
   }
 });
 
+// Start server
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`✅ HR.Ai server is running on port ${PORT}`);
