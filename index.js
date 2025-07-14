@@ -1,113 +1,69 @@
-// index.js
-
 const restify = require('restify');
 const corsMiddleware = require('restify-cors-middleware2');
-const fetch = require('node-fetch');
-require('dotenv').config();
+const { OpenAI } = require('openai');
 
-// Create server
-const server = restify.createServer();
+require('dotenv').config(); // Make sure .env contains OPENAI_API_KEY and ASSISTANT_ID
 
-// Middleware for CORS
-const cors = corsMiddleware({
-  origins: ['https://www.labourcheck.com'],
-  allowHeaders: ['Authorization', 'Content-Type'],
-  exposeHeaders: ['Authorization']
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+
+const server = restify.createServer();
+const cors = corsMiddleware({
+  origins: ['*'], // Or restrict to your frontend origin
+  allowHeaders: ['Authorization'],
+  exposeHeaders: ['Authorization'],
+});
+
 server.pre(cors.preflight);
 server.use(cors.actual);
 server.use(restify.plugins.bodyParser());
 
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
-  console.log(`✅ HR.Ai server is running on port ${PORT}`);
-});
-
-// Health check route
 server.get('/', (req, res, next) => {
-  res.send(200, { status: '✅ HR.Ai is live and ready.' });
+  res.send(200, { message: '✅ HR.Ai Server Online' });
   return next();
 });
 
-// POST handler for chatbot
 server.post('/api/messages', async (req, res) => {
+  const userMessage = req.body.text || req.body.message;
+
+  if (!userMessage) {
+    return res.send(400, { reply: '⚠️ No message provided.' });
+  }
+
   try {
-    const userMessage = req.body.text;
-    if (!userMessage) {
-      return res.send(400, { reply: "⚠️ No message provided." });
-    }
+    const thread = await openai.beta.threads.create();
 
-    // 1. Create new thread
-    const threadRes = await fetch('https://api.openai.com/v1/threads', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: userMessage,
+    });
+
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: process.env.ASSISTANT_ID,
+    });
+
+    let runStatus;
+    do {
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      if (runStatus.status !== 'completed') {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
-    });
+    } while (runStatus.status !== 'completed');
 
-    const thread = await threadRes.json();
-    const threadId = thread.id;
-
-    // 2. Add user message to thread
-    await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        role: 'user',
-        content: userMessage
-      })
-    });
-
-    // 3. Run assistant on thread
-    const runRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        assistant_id: process.env.ASSISTANT_ID
-      })
-    });
-
-    const run = await runRes.json();
-
-    // 4. Poll run status until complete
-    let runStatus = 'queued';
-    while (runStatus === 'queued' || runStatus === 'in_progress') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const statusRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${run.id}`, {
-        headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
-      });
-      const status = await statusRes.json();
-      runStatus = status.status;
-    }
-
-    // 5. Get messages from thread
-    const messagesRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
-    });
-
-    const messages = await messagesRes.json();
-
-    if (!messages || !Array.isArray(messages.data)) {
-      console.error('❌ Unexpected response from OpenAI:', messages);
-      return res.send(500, { reply: "⚠️ I didn't get a valid response from the assistant." });
-    }
-
-    const lastMessage = messages.data.find(m => m.role === 'assistant');
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const assistantReply = messages.data.find(msg => msg.role === 'assistant');
 
     res.send(200, {
-      reply: lastMessage?.content?.[0]?.text?.value || "🤖 I didn’t quite catch that."
+      reply: assistantReply?.content[0]?.text?.value || '🤖 No reply from assistant.',
     });
-
-  } catch (err) {
-    console.error('❌ Server error:', err);
-    res.send(500, { reply: "⚠️ I'm having trouble right now. Please try again later." });
+  } catch (error) {
+    console.error('Error:', error);
+    res.send(500, { reply: '🚨 Internal Server Error.' });
   }
+});
+
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => {
+  console.log(`✅ HR.Ai server is running on port ${PORT}`);
 });
