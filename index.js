@@ -15,7 +15,7 @@ const server = restify.createServer();
 
 // Setup CORS middleware
 const cors = corsMiddleware({
-  origins: ['https://www.labourcheck.com'],
+  origins: ['https://www.labourcheck.com'],  // Your allowed origins
   allowHeaders: ['Authorization', 'Content-Type'],
   exposeHeaders: ['Authorization']
 });
@@ -30,13 +30,13 @@ server.listen(process.env.PORT || 3978, () => {
   console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
 });
 
-// Health check
+// Health check endpoint
 server.get('/', (req, res, next) => {
   res.send(200, '✅ HR.Ai is running.');
   return next();
 });
 
-// 🔧 CORRECTED: Use full (req, res, next) signature for Restify compatibility
+// Main bot message endpoint
 server.post('/api/messages', (req, res, next) => {
   adapter.processActivity(req, res, async (context) => {
     if (context.activity.type === 'message') {
@@ -60,6 +60,7 @@ server.post('/api/messages', (req, res, next) => {
         const data = await response.json();
         console.log('[OpenAI Response]', data);
 
+        // Defensive fallback in case OpenAI's response shape changes
         const reply = data?.choices?.[0]?.message?.content || "🤖 I didn’t quite catch that. Can you rephrase?";
         await context.sendActivity(reply);
       } catch (err) {
@@ -68,7 +69,5 @@ server.post('/api/messages', (req, res, next) => {
       }
     }
   });
-
-  // ✅ Important: return next() here for Restify chain
-  return next();
+  // DO NOT call next() here — adapter handles response lifecycle.
 });
