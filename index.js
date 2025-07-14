@@ -15,14 +15,14 @@ server.listen(process.env.PORT || 3978, () => {
     console.log(`✅ HR.Ai Bot running on port ${process.env.PORT || 3978}`);
 });
 
-// Root route (health check)
+// Root route (for health checks)
 server.get('/', (req, res, next) => {
     res.send(200, '✅ HR.Ai is running.');
     return next();
 });
 
 // Bot endpoint
-server.post('/api/messages', (req, res) => {
+server.post('/api/messages', (req, res, next) => {
     adapter.processActivity(req, res, async (context) => {
         if (context.activity.type === 'message') {
             const userMessage = context.activity.text;
@@ -40,8 +40,6 @@ server.post('/api/messages', (req, res) => {
                 });
 
                 const data = await response.json();
-
-                // You may need to adjust this depending on OpenAI's response format
                 const reply = data?.choices?.[0]?.message?.content || "🤖 I'm here, but didn’t quite get that.";
 
                 await context.sendActivity(reply);
@@ -50,5 +48,10 @@ server.post('/api/messages', (req, res) => {
                 await context.sendActivity("⚠️ There was an error connecting to HR.Ai.");
             }
         }
+    })
+    .then(() => next())  // Properly pass control to next middleware
+    .catch(err => {
+        console.error("❌ Adapter error:", err);
+        return next(err); // Handle errors properly
     });
 });
