@@ -43,3 +43,24 @@ server.post('/api/messages', (req, res, next) => {
       try {
         const response = await fetch(`https://api.openai.com/v1/assistants/${process.env.ASSISTANT_ID}/messages`, {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            thread: { messages: [{ role: "user", content: userMessage }] }
+          })
+        });
+
+        const data = await response.json();
+        const reply = data?.choices?.[0]?.message?.content || "🤖 I'm here, but didn’t quite get that.";
+
+        await context.sendActivity(reply);
+      } catch (err) {
+        console.error("❌ OpenAI API error:", err);
+        await context.sendActivity("⚠️ There was an error connecting to HR.Ai.");
+      }
+    }
+  });
+  return next();
+});
