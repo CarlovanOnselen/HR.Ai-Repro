@@ -2,13 +2,12 @@
   "name": "hr-ai-teams-bot",
   "version": "1.0.0",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@koa/cors": "^4.0.0",
-    "file-type": "^18.0.0",
-    "openai": "^4.104.0",
+    "openai": "^4.27.0",
     "restify": "^11.1.0"
   }
 }

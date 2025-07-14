@@ -9,7 +9,7 @@ const server = restify.createServer();
 
 server.use(restify.plugins.bodyParser());
 
-// Simple CORS middleware:
+// ✅ CORS middleware
 server.pre((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
@@ -21,29 +21,49 @@ server.pre((req, res, next) => {
   return next();
 });
 
-server.post('/api/messages', async (req, res, next) => {
+// ✅ Assistants API route
+server.post('/api/messages', async (req, res) => {
   try {
-    const { message, memory, files } = req.body;
+    const { message, memory = [], files = [] } = req.body;
+
     if (!message) {
       res.send(400, { error: "No message provided" });
-      return next();
+      return;
     }
 
-    const completion = await openai.assistants.chat.completions.create({
-      assistant: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
-      input: {
-        content: message,
-        memory: memory || [],
-        files: files || [],
+    const response = await openai.beta.threads.createAndRun({
+      assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
+      thread: {
+        messages: [
+          {
+            role: "user",
+            content: message,
+          },
+        ],
       },
     });
 
-    res.send({ reply: completion.choices[0].message.content });
+    const runId = response.id;
+
+    // Poll run status
+    let runStatus;
+    do {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      runStatus = await openai.beta.threads.runs.retrieve(response.thread_id, runId);
+    } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
+
+    if (runStatus.status === 'failed') {
+      throw new Error("Assistant run failed");
+    }
+
+    const messages = await openai.beta.threads.messages.list(response.thread_id);
+    const lastMessage = messages.data.find(msg => msg.role === 'assistant');
+
+    res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
   } catch (error) {
-    console.error('Error in /api/messages:', error);
+    console.error('❌ Error in /api/messages:', error);
     res.send(500, { error: error.message || "Internal server error" });
   }
-  return next();
 });
 
 const PORT = process.env.PORT || 10000;
