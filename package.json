@@ -1,15 +1,17 @@
 {
   "name": "hr-ai-teams-bot",
   "version": "1.0.0",
-  "description": "HR.Ai bot for Microsoft Teams using OpenAI Assistant API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "botbuilder": "^4.20.0",
     "restify": "^11.1.0",
-    "dotenv": "^16.3.1",
+    "botbuilder": "^4.20.0",
+    "dotenv": "^16.0.3",
     "node-fetch": "^2.6.7"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
