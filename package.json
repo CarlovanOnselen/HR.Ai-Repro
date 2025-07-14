@@ -1,18 +1,16 @@
 {
   "name": "hr-ai-teams-bot",
   "version": "1.0.0",
-  "description": "HR.Ai backend server using OpenAI Assistants API with CORS and file support",
+  "description": "HR.Ai assistant backend with OpenAI Assistants API",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Carlo van Onselen",
-  "license": "MIT",
   "dependencies": {
-    "@koa/cors": "^4.0.0",
-    "file-type": "^18.0.0",
-    "openai": "^5.2.0",
-    "restify": "^11.3.0"
+    "file-type": "^18.4.0",
+    "openai": "^4.25.1",
+    "restify": "^11.1.0",
+    "restify-cors-middleware2": "^1.1.2"
   }
 }
