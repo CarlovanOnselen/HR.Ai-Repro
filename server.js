@@ -1,11 +1,14 @@
-import restify from 'restify';
+import dotenv from 'dotenv';
+dotenv.config();  // Load environment variables from .env
+
 import pkg from 'openai';
 const { OpenAI } = pkg;
+import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Make sure to set your OpenAI API key in the .env file
+  apiKey: process.env.OPENAI_API_KEY, // Make sure your OpenAI API key is set in .env
 });
 
 const server = restify.createServer();
@@ -27,16 +30,16 @@ server.pre((req, res, next) => {
 
 // ✅ Serve the widget file from the 'public' directory
 server.get('/widget', (req, res, next) => {
-  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Ensure the path is correct
   if (fs.existsSync(widgetFilePath)) {
-    res.sendFile(widgetFilePath);
+    res.sendFile(widgetFilePath);  // Serve the widget HTML file
   } else {
     res.send(404, { error: 'Widget file not found' });
   }
   return next();
 });
 
-// ✅ Assistants API route
+// ✅ Assistants API route to handle messages
 server.post('/api/messages', async (req, res) => {
   try {
     const { message, memory = [], files = [] } = req.body;
