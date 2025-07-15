@@ -6,6 +6,11 @@ const { OpenAI } = pkg;
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// Get the current directory using import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Make sure your OpenAI API key is set in .env
@@ -30,7 +35,7 @@ server.pre((req, res, next) => {
 
 // ✅ Serve the widget file from the 'public' directory
 server.get('/widget', (req, res, next) => {
-  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Ensure the path is correct
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Use __dirname
   if (fs.existsSync(widgetFilePath)) {
     res.sendFile(widgetFilePath);  // Serve the widget HTML file
   } else {
