@@ -9,7 +9,7 @@
     "fs": "0.0.1-security",
     "openai": "^5.9.0",
     "path": "^0.12.7",
-    "restify": "^8.6.1"
+    "restify": "^11.1.0"
   },
   "scripts": {
     "start": "node server.js"
