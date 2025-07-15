@@ -39,8 +39,8 @@ server.get('/widget', (req, res, next) => {
   
   if (fs.existsSync(widgetFilePath)) {
     const fileContent = fs.readFileSync(widgetFilePath, 'utf8');
-    res.header('Content-Type', 'text/html'); // Set correct content type
-    res.send(200, fileContent); // Send file content as the response
+    res.header('Content-Type', 'text/html'); // Ensure the correct content type is set
+    res.send(200, fileContent); // Send the HTML content to the client
   } else {
     res.send(404, { error: 'Widget file not found' });
   }
