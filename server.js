@@ -33,11 +33,14 @@ server.pre((req, res, next) => {
   return next();
 });
 
-// ✅ Serve the widget file from the 'public' directory
+// ✅ Serve the widget file from the 'public' directory using fs
 server.get('/widget', (req, res, next) => {
-  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Use __dirname
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Ensure the path is correct
+  
   if (fs.existsSync(widgetFilePath)) {
-    res.sendFile(widgetFilePath);  // Serve the widget HTML file
+    const fileContent = fs.readFileSync(widgetFilePath, 'utf8');
+    res.header('Content-Type', 'text/html'); // Set correct content type
+    res.send(200, fileContent); // Send file content as the response
   } else {
     res.send(404, { error: 'Widget file not found' });
   }
