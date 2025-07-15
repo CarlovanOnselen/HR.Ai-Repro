@@ -1,5 +1,6 @@
 import restify from 'restify';
-import { OpenAI } from 'openai';
+import pkg from 'openai';
+const { OpenAI } = pkg;
 import path from 'path';
 import fs from 'fs';
 
@@ -24,9 +25,9 @@ server.pre((req, res, next) => {
   return next();
 });
 
-// ✅ Serve the widget (make sure the widget file is located in the specified folder)
+// ✅ Serve the widget file from the 'public' directory
 server.get('/widget', (req, res, next) => {
-  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Adjust path accordingly
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');
   if (fs.existsSync(widgetFilePath)) {
     res.sendFile(widgetFilePath);
   } else {

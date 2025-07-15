@@ -3,25 +3,16 @@
   "version": "1.0.0",
   "description": "Backend for HR.Ai using Restify and OpenAI API",
   "main": "server.js",
+  "type": "module",
   "dependencies": {
-    "restify": "^8.5.1",
-    "openai": "^3.0.1",
+    "fs": "0.0.1-security",
+    "openai": "^5.9.0",
     "path": "^0.12.7",
-    "fs": "0.0.1-security"
+    "restify": "^8.0.0"
   },
   "scripts": {
     "start": "node server.js"
   },
   "author": "Your Name",
-  "license": "MIT",
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Carlovanonselen/HR.Ai-Repro.git"
-  },
-  "keywords": [],
-  "bugs": {
-    "url": "https://github.com/Carlovanonselen/HR.Ai-Repro/issues"
-  },
-  "homepage": "https://github.com/Carlovanonselen/HR.Ai-Repro#readme"
+  "license": "MIT"
 }
