@@ -1,5 +1,7 @@
 import restify from 'restify';
 import { OpenAI } from 'openai';
+import path from 'path';
+import fs from 'fs';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,6 +9,7 @@ const openai = new OpenAI({
 
 const server = restify.createServer();
 
+// Middleware to parse JSON requests
 server.use(restify.plugins.bodyParser());
 
 // ✅ CORS middleware
@@ -18,6 +21,20 @@ server.pre((req, res, next) => {
     res.send(204);
     return;
   }
+  return next();
+});
+
+// ✅ Serve the widget (make sure the widget file is located in the specified folder)
+server.get('/widget', (req, res, next) => {
+  // Adjust path to point to your widget file (HTML, JS, etc.)
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Update this path accordingly
+  
+  if (fs.existsSync(widgetFilePath)) {
+    res.sendFile(widgetFilePath);
+  } else {
+    res.send(404, { error: 'Widget file not found' });
+  }
+
   return next();
 });
 
@@ -66,6 +83,7 @@ server.post('/api/messages', async (req, res) => {
   }
 });
 
+// Start the server
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`✅ HR.Ai server running on port ${PORT}`);

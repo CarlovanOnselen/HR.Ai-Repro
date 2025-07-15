@@ -1,13 +1,27 @@
 {
-  "name": "hr-ai-teams-bot",
+  "name": "hr-ai-backend",
   "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "description": "Backend for HR.Ai using Restify and OpenAI API",
+  "main": "server.js",
   "dependencies": {
-    "openai": "^4.27.0",
-    "restify": "^11.1.0"
-  }
+    "restify": "^8.5.1",
+    "openai": "^3.0.1",
+    "path": "^0.12.7",
+    "fs": "0.0.1-security"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Carlovanonselen/HR.Ai-Repro.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/Carlovanonselen/HR.Ai-Repro/issues"
+  },
+  "homepage": "https://github.com/Carlovanonselen/HR.Ai-Repro#readme"
 }
