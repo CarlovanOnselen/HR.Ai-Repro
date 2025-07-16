@@ -5,6 +5,7 @@ import pkg from 'openai';
 const { OpenAI } = pkg;
 import restify from 'restify';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // Get the current directory using import.meta.url
@@ -20,12 +21,6 @@ const server = restify.createServer();
 // Middleware to parse JSON requests
 server.use(restify.plugins.bodyParser());
 
-// Serve static files from the 'public' directory
-server.get(/\/public\/?.*/, restify.plugins.serveStatic({
-  directory: path.join(__dirname, 'public'),
-  default: 'widget.html', // This makes sure the widget.html is served by default
-}));
-
 // ✅ CORS middleware
 server.pre((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -34,6 +29,21 @@ server.pre((req, res, next) => {
   if (req.method === 'OPTIONS') {
     res.send(204);
     return;
+  }
+  return next();
+});
+
+// ✅ Serve the widget file from the 'public' directory using fs
+server.get('/widget.html', (req, res, next) => {
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Ensure the path is correct
+  
+  if (fs.existsSync(widgetFilePath)) {
+    const fileContent = fs.readFileSync(widgetFilePath, 'utf8');
+    res.header('Content-Type', 'text/html');  // Ensure the correct content type is set
+    res.write(fileContent);  // Stream the content
+    res.end();  // End the response
+  } else {
+    res.send(404, { error: 'Widget file not found' });
   }
   return next();
 });
