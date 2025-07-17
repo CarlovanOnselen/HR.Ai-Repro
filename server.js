@@ -1,4 +1,5 @@
-import { OpenAI } from 'openai'; // Updated import statement
+import pkg from 'openai';  // CommonJS import
+const { OpenAI } = pkg;
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
