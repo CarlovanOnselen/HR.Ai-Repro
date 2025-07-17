@@ -1,25 +1,25 @@
 {
   "name": "hr-ai-teams-bot",
   "version": "1.0.0",
-  "description": "HR.Ai integration for OpenAI Assistant with Restify server",
+  "description": "HR.Ai Teams Bot",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "npm run build",
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "openai": "^3.0.0",
-    "restify": "^8.5.1",
+    "openai": "^2.0.0",
+    "restify": "^10.0.0",
     "path": "^0.12.7",
-    "fs": "0.0.1-security"
+    "fs": "0.0.1-security",
+    "dotenv": "^10.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.7"
+    "nodemon": "^2.0.15"
   },
   "engines": {
     "node": "16.x"
   },
-  "author": "Your Name",
-  "license": "MIT",
-  "type": "module"  // Add this line
+  "type": "module"
 }
