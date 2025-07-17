@@ -1,11 +1,13 @@
-import { OpenAI } from 'openai';  // Use the default import, no need to destructure
+import openaiPkg from 'openai'; // Default import
+const { OpenAI } = openaiPkg;  // Destructure to get the OpenAI constructor
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-// Initialize OpenAI using the API key
+// Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,  // Uses the API key from environment
+  apiKey: process.env.OPENAI_API_KEY, // This will pick up the API key from Render's environment
 });
 
 const server = restify.createServer();
@@ -54,19 +56,57 @@ server.post('/api/messages', async (req, res) => {
     console.log('Received message:', message);
 
     // Create and run the OpenAI thread
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',  // Specify the model you want to use (e.g., 'gpt-4')
-      messages: [
-        { role: 'user', content: message },
-      ],
+    const response = await openai.beta.threads.createAndRun({
+      assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
+      thread: {
+        messages: [
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      },
     });
 
     // Log the full response from createAndRun
-    console.log('API Response:', JSON.stringify(response, null, 2));
+    console.log('API Response from createAndRun:', JSON.stringify(response, null, 2));
 
-    const reply = response?.choices?.[0]?.message?.content || "(No reply)";
+    // Extract threadId and runId
+    const threadId = response?.thread_id || response?.thread?.id;
+    const runId = response?.id;
 
-    res.send({ reply });
+    console.log('Thread ID:', threadId);
+    console.log('Run ID:', runId);
+
+    // Validate threadId and runId to avoid invalid path issues
+    if (!threadId || !runId) {
+      console.error('Error: Missing thread ID or run ID in response');
+      res.send(500, { error: 'Missing thread or run ID in API response' });
+      return;
+    }
+
+    // Poll run status
+    let runStatus;
+    console.log('Polling for run status...');
+    do {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
+      try {
+        runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        console.log('Run Status:', runStatus.status);
+      } catch (err) {
+        console.error('Error while polling run status:', err);
+      }
+    } while (runStatus?.status !== 'completed' && runStatus?.status !== 'failed');
+
+    if (runStatus?.status === 'failed') {
+      throw new Error("Assistant run failed");
+    }
+
+    const messages = await openai.beta.threads.messages.list(threadId);
+    const lastMessage = messages.data.find(msg => msg.role === 'assistant');
+
+    res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
   } catch (error) {
     console.error('❌ Error in /api/messages:', error);
     res.send(500, { error: error.message || "Internal server error" });
