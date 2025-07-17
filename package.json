@@ -1,19 +1,31 @@
 {
   "name": "hr-ai-backend",
   "version": "1.0.0",
-  "description": "Backend for HR.Ai using Restify and OpenAI API",
+  "description": "HR.Ai Backend Service",
   "main": "server.js",
-  "type": "module",
-  "dependencies": {
-    "dotenv": "^17.2.0",
-    "fs": "0.0.1-security",
-    "openai": "^5.9.0",
-    "path": "^0.12.7",
-    "restify": "^11.1.0"
-  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "author": "Your Name",
-  "license": "MIT"
+  "engines": {
+    "node": "16.x.x",
+    "npm": "7.x.x"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "openai": "^3.0.0",
+    "restify": "^8.0.0",
+    "csv-parse": "^4.4.6",
+    "http-deceiver": "^1.4.1",
+    "path": "^0.12.7",
+    "fs": "^0.0.1",
+    "fileURLToPath": "^2.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "license": "MIT",
+  "funding": {
+    "url": "https://github.com/CarlovanOnselen/HR.Ai-Repro"
+  }
 }

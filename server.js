@@ -1,6 +1,3 @@
-import dotenv from 'dotenv';
-dotenv.config();  // Load environment variables from .env
-
 import pkg from 'openai';
 const { OpenAI } = pkg;
 import restify from 'restify';
@@ -8,12 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-// Get the current directory using import.meta.url
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+// Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Make sure your OpenAI API key is set in .env
+  apiKey: process.env.OPENAI_API_KEY, // This will pick up the API key from Render's environment
 });
 
 const server = restify.createServer();
@@ -35,13 +29,13 @@ server.pre((req, res, next) => {
 
 // ✅ Serve the widget file from the 'public' directory using fs
 server.get('/widget.html', (req, res, next) => {
-  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');  // Ensure the path is correct
+  const widgetFilePath = path.join(__dirname, 'public', 'widget.html');
   
   if (fs.existsSync(widgetFilePath)) {
     const fileContent = fs.readFileSync(widgetFilePath, 'utf8');
-    res.header('Content-Type', 'text/html');  // Ensure the correct content type is set
-    res.write(fileContent);  // Stream the content
-    res.end();  // End the response
+    res.header('Content-Type', 'text/html');
+    res.write(fileContent);
+    res.end();
   } else {
     res.send(404, { error: 'Widget file not found' });
   }
@@ -58,6 +52,10 @@ server.post('/api/messages', async (req, res) => {
       return;
     }
 
+    // Log the incoming message
+    console.log('Received message:', message);
+
+    // Create and run the OpenAI thread
     const response = await openai.beta.threads.createAndRun({
       assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
       thread: {
@@ -70,20 +68,42 @@ server.post('/api/messages', async (req, res) => {
       },
     });
 
-    const runId = response.id;
+    // Log the full response from createAndRun
+    console.log('API Response from createAndRun:', JSON.stringify(response, null, 2));
+
+    // Extract threadId and runId
+    const threadId = response?.thread_id || response?.thread?.id;
+    const runId = response?.id;
+
+    console.log('Thread ID:', threadId);
+    console.log('Run ID:', runId);
+
+    // Validate threadId and runId to avoid invalid path issues
+    if (!threadId || !runId) {
+      console.error('Error: Missing thread ID or run ID in response');
+      res.send(500, { error: 'Missing thread or run ID in API response' });
+      return;
+    }
 
     // Poll run status
     let runStatus;
+    console.log('Polling for run status...');
     do {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(response.thread_id, runId);
-    } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
+      console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
+      try {
+        runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        console.log('Run Status:', runStatus.status);
+      } catch (err) {
+        console.error('Error while polling run status:', err);
+      }
+    } while (runStatus?.status !== 'completed' && runStatus?.status !== 'failed');
 
-    if (runStatus.status === 'failed') {
+    if (runStatus?.status === 'failed') {
       throw new Error("Assistant run failed");
     }
 
-    const messages = await openai.beta.threads.messages.list(response.thread_id);
+    const messages = await openai.beta.threads.messages.list(threadId);
     const lastMessage = messages.data.find(msg => msg.role === 'assistant');
 
     res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
