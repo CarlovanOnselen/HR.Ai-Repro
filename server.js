@@ -1,7 +1,7 @@
-const { OpenAI } = require('openai');
-const restify = require('restify');
-const path = require('path');
-const fs = require('fs');
+import { OpenAI } from 'openai'; // Updated import statement
+import restify from 'restify';
+import path from 'path';
+import fs from 'fs';
 
 // Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({
