@@ -1,5 +1,4 @@
-import openaiPkg from 'openai'; // Default import
-const { OpenAI } = openaiPkg;  // Destructure to get the OpenAI constructor
+import OpenAI from 'openai'; // Default import
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
