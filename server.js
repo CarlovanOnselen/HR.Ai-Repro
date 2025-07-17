@@ -10,6 +10,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // This will pick up the API key from Render's environment
 });
 
+// Get current filename and directory (used for widget file serving)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const server = restify.createServer();
 
 // Middleware to parse JSON requests
