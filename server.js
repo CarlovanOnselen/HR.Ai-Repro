@@ -1,8 +1,7 @@
-import pkg from 'openai';
-const { OpenAI } = pkg;
-import restify from 'restify';
-import path from 'path';
-import fs from 'fs';
+const { OpenAI } = require('openai');
+const restify = require('restify');
+const path = require('path');
+const fs = require('fs');
 
 // Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({

@@ -20,5 +20,6 @@
     "node": "16.x"
   },
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"  // Add this line
 }
