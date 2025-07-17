@@ -1,13 +1,11 @@
-import pkg from 'openai';  // Import the whole 'openai' package
-const { OpenAI } = pkg;   // Destructure to get the OpenAI object
-
+import { OpenAI } from 'openai';  // Use the default import, no need to destructure
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 
 // Initialize OpenAI using the API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Uses the API key from environment
+  apiKey: process.env.OPENAI_API_KEY,  // Uses the API key from environment
 });
 
 const server = restify.createServer();
