@@ -1,5 +1,6 @@
-import pkg from 'openai';  // CommonJS import
-const { OpenAI } = pkg;
+import pkg from 'openai';  // Import the entire package
+const { OpenAI } = pkg;  // Destructure the OpenAI object
+
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
@@ -55,57 +56,19 @@ server.post('/api/messages', async (req, res) => {
     console.log('Received message:', message);
 
     // Create and run the OpenAI thread
-    const response = await openai.beta.threads.createAndRun({
-      assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
-      thread: {
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-      },
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',  // or your preferred model
+      messages: [
+        { role: 'user', content: message },
+      ],
     });
 
     // Log the full response from createAndRun
-    console.log('API Response from createAndRun:', JSON.stringify(response, null, 2));
+    console.log('API Response:', JSON.stringify(response, null, 2));
 
-    // Extract threadId and runId
-    const threadId = response?.thread_id || response?.thread?.id;
-    const runId = response?.id;
+    const reply = response?.choices?.[0]?.message?.content || "(No reply)";
 
-    console.log('Thread ID:', threadId);
-    console.log('Run ID:', runId);
-
-    // Validate threadId and runId to avoid invalid path issues
-    if (!threadId || !runId) {
-      console.error('Error: Missing thread ID or run ID in response');
-      res.send(500, { error: 'Missing thread or run ID in API response' });
-      return;
-    }
-
-    // Poll run status
-    let runStatus;
-    console.log('Polling for run status...');
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
-      try {
-        runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-        console.log('Run Status:', runStatus.status);
-      } catch (err) {
-        console.error('Error while polling run status:', err);
-      }
-    } while (runStatus?.status !== 'completed' && runStatus?.status !== 'failed');
-
-    if (runStatus?.status === 'failed') {
-      throw new Error("Assistant run failed");
-    }
-
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const lastMessage = messages.data.find(msg => msg.role === 'assistant');
-
-    res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
+    res.send({ reply });
   } catch (error) {
     console.error('❌ Error in /api/messages:', error);
     res.send(500, { error: error.message || "Internal server error" });
