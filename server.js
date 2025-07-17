@@ -1,13 +1,13 @@
-import pkg from 'openai';  // Import the entire package
-const { OpenAI } = pkg;  // Destructure the OpenAI object
+import pkg from 'openai';  // Import the whole 'openai' package
+const { OpenAI } = pkg;   // Destructure to get the OpenAI object
 
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 
-// Initialize OpenAI with the API key from Render's environment
+// Initialize OpenAI using the API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // This will pick up the API key from Render's environment
+  apiKey: process.env.OPENAI_API_KEY, // Uses the API key from environment
 });
 
 const server = restify.createServer();
@@ -57,7 +57,7 @@ server.post('/api/messages', async (req, res) => {
 
     // Create and run the OpenAI thread
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',  // or your preferred model
+      model: 'gpt-4',  // Specify the model you want to use (e.g., 'gpt-4')
       messages: [
         { role: 'user', content: message },
       ],
