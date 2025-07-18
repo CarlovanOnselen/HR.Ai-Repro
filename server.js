@@ -1,16 +1,16 @@
-import openaiPkg from 'openai'; // Use default import
-const { OpenAI } = openaiPkg;  // Extract OpenAI from the default import
+import openaiPkg from 'openai';  // Import the package as a default import
+const openai = openaiPkg.OpenAI;  // Access OpenAI class from the default export
 
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-dotenv.config(); // Ensure the .env file is loaded
+dotenv.config(); // Load the environment variables
 
-// Initialize OpenAI with the API key from environment
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Ensure the API key is in the environment variables
+// Initialize OpenAI with the API key from environment variables
+const client = new openai({
+  apiKey: process.env.OPENAI_API_KEY,  // Ensure the API key is correctly set in the environment
 });
 
 const server = restify.createServer();
@@ -59,7 +59,7 @@ server.post('/api/messages', async (req, res) => {
     console.log('Received message:', message);
 
     // Create and run the OpenAI thread
-    const response = await openai.threads.createAndRun({
+    const response = await client.threads.createAndRun({
       assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
       thread: {
         messages: [
@@ -95,7 +95,7 @@ server.post('/api/messages', async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
       try {
-        runStatus = await openai.threads.runs.retrieve(threadId, runId);
+        runStatus = await client.threads.runs.retrieve(threadId, runId);
         console.log('Run Status:', runStatus.status);
       } catch (err) {
         console.error('Error while polling run status:', err);
@@ -106,7 +106,7 @@ server.post('/api/messages', async (req, res) => {
       throw new Error("Assistant run failed");
     }
 
-    const messages = await openai.threads.messages.list(threadId);
+    const messages = await client.threads.messages.list(threadId);
     const lastMessage = messages.data.find(msg => msg.role === 'assistant');
 
     res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
