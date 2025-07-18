@@ -1,6 +1,4 @@
-import pkg from 'openai';  // Default import for openai
-const { OpenAI } = pkg;
-
+import OpenAI from 'openai'; // Correct default import for OpenAI package
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
@@ -8,9 +6,9 @@ import dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables
 
-// Initialize OpenAI using the default import
+// Initialize OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,  // Your OpenAI API key from Render environment variables
+  apiKey: process.env.OPENAI_API_KEY, // Your OpenAI API key from Render environment variables
 });
 
 const server = restify.createServer();
