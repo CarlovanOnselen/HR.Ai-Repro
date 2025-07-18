@@ -1,4 +1,6 @@
-import { OpenAI } from 'openai'; // Updated import statement
+import pkg from 'openai'; // Use default import
+const { OpenAI } = pkg; // Destructure to access OpenAI
+
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
