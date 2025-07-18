@@ -1,5 +1,5 @@
-import pkg from 'openai'; // Use default import
-const { OpenAI } = pkg; // Destructure to access OpenAI
+import openaiPkg from 'openai'; // Import the package using default import
+const { OpenAI } = openaiPkg; // Extract the OpenAI constructor from the default import
 
 import restify from 'restify';
 import path from 'path';
