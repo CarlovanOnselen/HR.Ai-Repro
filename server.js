@@ -1,16 +1,14 @@
-import openaiPkg from 'openai';  // Import the package as a default import
-const openai = openaiPkg.OpenAI;  // Access OpenAI class from the default export
-
+import { OpenAI } from 'openai';  // Correctly importing OpenAI from the openai package
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-dotenv.config(); // Load the environment variables
+dotenv.config(); // Ensure to load environment variables from .env
 
 // Initialize OpenAI with the API key from environment variables
-const client = new openai({
-  apiKey: process.env.OPENAI_API_KEY,  // Ensure the API key is correctly set in the environment
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,  // Make sure to set the API key in Render's environment variables
 });
 
 const server = restify.createServer();
@@ -59,57 +57,19 @@ server.post('/api/messages', async (req, res) => {
     console.log('Received message:', message);
 
     // Create and run the OpenAI thread
-    const response = await client.threads.createAndRun({
-      assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
-      thread: {
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-      },
+    const response = await openai.chat.completions.create({
+      messages: [
+        { role: 'user', content: message }
+      ]
     });
 
     // Log the full response from createAndRun
     console.log('API Response from createAndRun:', JSON.stringify(response, null, 2));
 
-    // Extract threadId and runId
-    const threadId = response?.thread_id || response?.thread?.id;
-    const runId = response?.id;
+    // Send the assistant's response
+    const assistantReply = response.choices[0]?.message.content || "(No reply)";
 
-    console.log('Thread ID:', threadId);
-    console.log('Run ID:', runId);
-
-    // Validate threadId and runId to avoid invalid path issues
-    if (!threadId || !runId) {
-      console.error('Error: Missing thread ID or run ID in response');
-      res.send(500, { error: 'Missing thread or run ID in API response' });
-      return;
-    }
-
-    // Poll run status
-    let runStatus;
-    console.log('Polling for run status...');
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
-      try {
-        runStatus = await client.threads.runs.retrieve(threadId, runId);
-        console.log('Run Status:', runStatus.status);
-      } catch (err) {
-        console.error('Error while polling run status:', err);
-      }
-    } while (runStatus?.status !== 'completed' && runStatus?.status !== 'failed');
-
-    if (runStatus?.status === 'failed') {
-      throw new Error("Assistant run failed");
-    }
-
-    const messages = await client.threads.messages.list(threadId);
-    const lastMessage = messages.data.find(msg => msg.role === 'assistant');
-
-    res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
+    res.send({ reply: assistantReply });
   } catch (error) {
     console.error('❌ Error in /api/messages:', error);
     res.send(500, { error: error.message || "Internal server error" });
