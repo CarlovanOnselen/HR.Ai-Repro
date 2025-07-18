@@ -1,4 +1,5 @@
-import { OpenAI } from 'openai';  // Importing the OpenAI class directly
+import pkg from 'openai';  // Default import for openai
+const { OpenAI } = pkg;
 
 import restify from 'restify';
 import path from 'path';
