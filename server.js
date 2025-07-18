@@ -1,9 +1,7 @@
-import pkg from 'openai';  // Default import
-const { OpenAI } = pkg;    // Destructure OpenAI from the package
+import OpenAI from 'openai';  // Corrected import
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 
 // Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({
@@ -56,7 +54,7 @@ server.post('/api/messages', async (req, res) => {
     console.log('Received message:', message);
 
     // Create and run the OpenAI thread
-    const response = await openai.beta.threads.createAndRun({
+    const response = await openai.threads.createAndRun({
       assistant_id: "asst_CvpjeE9OxLq5bqHLFbSmanBP",
       thread: {
         messages: [
@@ -92,7 +90,7 @@ server.post('/api/messages', async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log('Polling run status for threadId:', threadId, 'and runId:', runId);
       try {
-        runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        runStatus = await openai.threads.runs.retrieve(threadId, runId);
         console.log('Run Status:', runStatus.status);
       } catch (err) {
         console.error('Error while polling run status:', err);
@@ -103,7 +101,7 @@ server.post('/api/messages', async (req, res) => {
       throw new Error("Assistant run failed");
     }
 
-    const messages = await openai.beta.threads.messages.list(threadId);
+    const messages = await openai.threads.messages.list(threadId);
     const lastMessage = messages.data.find(msg => msg.role === 'assistant');
 
     res.send({ reply: lastMessage?.content?.[0]?.text?.value || "(No reply)" });
