@@ -1,15 +1,15 @@
-import pkg from 'openai';  // Correctly import the default export from 'openai'
-const { OpenAI } = pkg;  // Destructure OpenAI from the default import
+import { OpenAI } from 'openai';  // Importing the OpenAI class directly
+
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-dotenv.config(); // Ensure to load environment variables from .env
+dotenv.config(); // Load environment variables
 
-// Initialize OpenAI with the API key from environment variables
+// Initialize OpenAI using the default import
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,  // Make sure to set the API key in Render's environment variables
+  apiKey: process.env.OPENAI_API_KEY,  // Your OpenAI API key from Render environment variables
 });
 
 const server = restify.createServer();
@@ -57,14 +57,15 @@ server.post('/api/messages', async (req, res) => {
     // Log the incoming message
     console.log('Received message:', message);
 
-    // Create and run the OpenAI thread
+    // Create and run the OpenAI thread (correct method for OpenAI SDK v2)
     const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',  // Specify the model (can change based on your setup)
       messages: [
-        { role: 'user', content: message }
-      ]
+        { role: 'user', content: message },
+      ],
     });
 
-    // Log the full response from createAndRun
+    // Log the full response from OpenAI
     console.log('API Response from createAndRun:', JSON.stringify(response, null, 2));
 
     // Send the assistant's response
