@@ -1,7 +1,10 @@
-import OpenAI from 'openai';  // Corrected import
+import OpenAI from 'openai'; // Default import for OpenAI
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config(); // Ensure your .env file is loaded with the API key
 
 // Initialize OpenAI with the API key from Render's environment
 const openai = new OpenAI({
@@ -28,7 +31,7 @@ server.pre((req, res, next) => {
 // ✅ Serve the widget file from the 'public' directory using fs
 server.get('/widget.html', (req, res, next) => {
   const widgetFilePath = path.join(__dirname, 'public', 'widget.html');
-  
+
   if (fs.existsSync(widgetFilePath)) {
     const fileContent = fs.readFileSync(widgetFilePath, 'utf8');
     res.header('Content-Type', 'text/html');
