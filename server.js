@@ -1,4 +1,4 @@
-import OpenAI from 'openai'; // Default import for OpenAI
+import { OpenAI } from 'openai'; // Updated import statement
 import restify from 'restify';
 import path from 'path';
 import fs from 'fs';
